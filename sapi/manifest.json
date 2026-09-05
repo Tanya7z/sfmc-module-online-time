@@ -1,0 +1,40 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/gh/DogeLakeDev/ScriptsForMinecraftServer@latest/modules/sdk/%40sfmc-sdk/schemas/sapi-manifest.v2.schema.json",
+  "schemaVersion": 2,
+  "id": "online-time",
+  "name": "在线时长统计",
+  "configKey": "online_time",
+  "requires": [],
+  "permissions": [
+    "config:read:online_time",
+    "db:read:sfmc_online_time",
+    "db:write:sfmc_online_time",
+    "service:onlinetime.byPlayer",
+    "service:onlinetime.top",
+    "service:gui.registerMenuItem"
+  ],
+  "services": {
+    "provides": [
+      {
+        "name": "onlinetime.byPlayer",
+        "input": {
+          "type": "object"
+        },
+        "output": {
+          "type": "object"
+        }
+      },
+      {
+        "name": "onlinetime.top",
+        "input": {
+          "type": "object"
+        },
+        "output": {
+          "type": "array"
+        }
+      }
+    ],
+    "requires": []
+  },
+  "notes": "进服打点 + 3 分钟心跳结转；跨午夜切片；gui 菜单弱依赖。"
+}
