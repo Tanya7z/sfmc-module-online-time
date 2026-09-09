@@ -3,17 +3,12 @@
  */
 
 import { Player, system, world } from "@minecraft/server";
+import { ModuleRegistry } from "@sfmc-bds/sdk/module-loader";
 import { config } from "@sfmc-bds/sdk/sapi/config";
 import { db } from "@sfmc-bds/sdk/sapi/db";
-import { ModuleRegistry } from "@sfmc-bds/sdk/module-loader";
 import { Command, debug, Msg, Permission } from "@sfmc-bds/sdk/sapi/runtime";
 import { service } from "@sfmc-bds/sdk/sapi/service";
-import {
-  dateKey,
-  formatDuration,
-  monthKey,
-  startOfLocalDay,
-} from "./timeutil.js";
+import { dateKey, formatDuration, monthKey, startOfLocalDay } from "./timeutil.js";
 
 const MODULE_ID = "online-time";
 const TABLE = "sfmc_online_time";
@@ -228,8 +223,7 @@ async function handleByPlayer(input: Record<string, unknown>) {
 async function handleTop(input: Record<string, unknown>) {
   const metric = (input.metric as string) || "total";
   const limit = Math.min(50, Math.max(1, Number(input.limit) || 10));
-  const field =
-    metric === "today" ? "today_seconds" : metric === "month" ? "month_seconds" : "total_seconds";
+  const field = metric === "today" ? "today_seconds" : metric === "month" ? "month_seconds" : "total_seconds";
 
   // 先刷在线玩家，保证榜单含实时增量
   await flushAll(false);
@@ -265,7 +259,7 @@ function showStats(player: Player): void {
       `§e今日在线 §f${formatDuration(live.todaySeconds)}\n` +
       `§e本月在线 §f${formatDuration(live.monthSeconds)}\n` +
       `§e总在线 §f${formatDuration(live.totalSeconds)}\n`,
-    player,
+    player
   );
 }
 
@@ -281,12 +275,23 @@ async function tryRegisterGuiMenu(): Promise<void> {
     } as unknown as Record<string, unknown>);
     debug.i("ONLINE", "gui menu registered");
   } catch (err) {
-    debug.w(
-      "ONLINE",
-      `gui.registerMenuItem 不可用，已降级: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    debug.w("ONLINE", `gui.registerMenuItem 不可用，已降级: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
+
+function registerCommands(): void {
+  const handler = (player: Player | undefined) => {
+    if (!player) {
+      debug.i("ONLINE", "该指令必须由玩家执行");
+      return;
+    }
+    showStats(player);
+  };
+  Command.register("onlinetime", "onlinetime.see", handler, "查看在线时间统计", MODULE_ID);
+  Command.register("onlineTime", "onlinetime.see", handler, "查看在线时间统计", MODULE_ID);
+}
+
+registerCommands();
 
 ModuleRegistry.register({
   id: MODULE_ID,
@@ -294,17 +299,6 @@ ModuleRegistry.register({
   lifecycle: {
     registerPermissions() {
       Permission.register("onlinetime.see", Permission.Any);
-    },
-    registerCommands() {
-      const handler = (player: Player | undefined) => {
-        if (!player) {
-          debug.i("ONLINE", "该指令必须由玩家执行");
-          return;
-        }
-        showStats(player);
-      };
-      Command.register("onlinetime", "onlinetime.see", handler, "查看在线时间统计", MODULE_ID);
-      Command.register("onlineTime", "onlinetime.see", handler, "查看在线时间统计", MODULE_ID);
     },
     registerEvents() {
       const spawnCb = world.afterEvents.playerSpawn.subscribe((ev) => {
