@@ -4,14 +4,16 @@
   "id": "online-time",
   "name": "在线时长统计",
   "configKey": "online_time",
-  "requires": [],
+  "requires": ["gui"],
   "permissions": [
     "config:read:online_time",
     "db:read:sfmc_online_time",
     "db:write:sfmc_online_time",
     "service:onlinetime.byPlayer",
     "service:onlinetime.top",
-    "service:gui.registerMenuItem"
+    "service:gui.registerFeature",
+    "service:gui.unregisterFeature",
+    "service:gui.openScreen"
   ],
   "services": {
     "provides": [
@@ -34,7 +36,7 @@
         }
       }
     ],
-    "requires": []
+    "requires": [{ "name": "gui.registerFeature" }, { "name": "gui.unregisterFeature" }, { "name": "gui.openScreen" }]
   },
-  "notes": "进服打点 + 3 分钟心跳结转；跨午夜切片；gui 菜单弱依赖。"
+  "notes": "进服打点 + 3 分钟心跳结转；跨午夜切片；在线统计页面由声明式 JSON 定义。"
 }

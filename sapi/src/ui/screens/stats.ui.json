@@ -1,0 +1,40 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/gh/DogeLakeDev/ScriptsForMinecraftServer@latest/modules/sdk/%40sfmc-sdk/schemas/ui-screen.v1.schema.json",
+  "formatVersion": 1,
+  "id": "online-time.stats",
+  "name": "在线统计",
+  "presentation": "reactive",
+  "title": "{{player.name}} 的在线时间",
+  "load": {
+    "stats": {
+      "service": "onlinetime.byPlayer",
+      "input": {
+        "playerId": "{{player.id}}"
+      }
+    }
+  },
+  "body": [
+    {
+      "id": "stats",
+      "type": "info",
+      "items": [
+        "本次在线：{{data.stats.sessionFormatted}}",
+        "今日在线：{{data.stats.todayFormatted}}",
+        "本月在线：{{data.stats.monthFormatted}}",
+        "累计在线：{{data.stats.totalFormatted}}"
+      ]
+    },
+    {
+      "id": "refresh",
+      "type": "button",
+      "label": "刷新",
+      "trigger": { "type": "refresh" }
+    },
+    {
+      "id": "close",
+      "type": "button",
+      "label": "关闭",
+      "trigger": { "type": "close" }
+    }
+  ]
+}

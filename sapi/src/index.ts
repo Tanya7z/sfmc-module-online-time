@@ -6,9 +6,11 @@ import { Player, system, world } from "@minecraft/server";
 import { ModuleRegistry } from "@sfmc-bds/sdk/module-loader";
 import { config } from "@sfmc-bds/sdk/sapi/config";
 import { db } from "@sfmc-bds/sdk/sapi/db";
-import { Command, debug, Msg, Permission } from "@sfmc-bds/sdk/sapi/runtime";
+import { Command, debug, Permission } from "@sfmc-bds/sdk/sapi/runtime";
 import { service } from "@sfmc-bds/sdk/sapi/service";
 import { dateKey, formatDuration, monthKey, startOfLocalDay } from "./timeutil.js";
+import featureUi from "./ui/feature.ui.json" with { type: "json" };
+import statsUi from "./ui/screens/stats.ui.json" with { type: "json" };
 
 const MODULE_ID = "online-time";
 const TABLE = "sfmc_online_time";
@@ -193,6 +195,10 @@ async function handleByPlayer(input: Record<string, unknown>) {
       monthSeconds: live.monthSeconds,
       totalSeconds: live.totalSeconds,
       lastActiveAt: Date.now(),
+      sessionFormatted: formatDuration(live.sessionSeconds),
+      todayFormatted: formatDuration(live.todaySeconds),
+      monthFormatted: formatDuration(live.monthSeconds),
+      totalFormatted: formatDuration(live.totalSeconds),
     };
   }
   const row = await db.get<DbRow>(TABLE, playerId);
@@ -206,6 +212,10 @@ async function handleByPlayer(input: Record<string, unknown>) {
       monthSeconds: 0,
       totalSeconds: 0,
       lastActiveAt: 0,
+      sessionFormatted: formatDuration(0),
+      todayFormatted: formatDuration(0),
+      monthFormatted: formatDuration(0),
+      totalFormatted: formatDuration(0),
     };
   }
   return {
@@ -217,6 +227,10 @@ async function handleByPlayer(input: Record<string, unknown>) {
     monthSeconds: Number(row.month_seconds) || 0,
     totalSeconds: Number(row.total_seconds) || 0,
     lastActiveAt: Number(row.updated_at) || 0,
+    sessionFormatted: formatDuration(0),
+    todayFormatted: formatDuration(Number(row.today_seconds) || 0),
+    monthFormatted: formatDuration(Number(row.month_seconds) || 0),
+    totalFormatted: formatDuration(Number(row.total_seconds) || 0),
   };
 }
 
@@ -246,37 +260,14 @@ async function handleTop(input: Record<string, unknown>) {
   });
 }
 
-function showStats(player: Player): void {
-  const state = sessions.get(player.id);
-  if (!state) {
-    Msg.info("在线时长数据加载中，请稍后再试。", player);
-    return;
-  }
-  const live = liveSnapshot(state);
-  Msg.info(
-    `玩家 §a${player.name}§r 的在线时间统计:\n` +
-      `§e本次在线 §f${formatDuration(live.sessionSeconds)}\n` +
-      `§e今日在线 §f${formatDuration(live.todaySeconds)}\n` +
-      `§e本月在线 §f${formatDuration(live.monthSeconds)}\n` +
-      `§e总在线 §f${formatDuration(live.totalSeconds)}\n`,
-    player
-  );
-}
-
-async function tryRegisterGuiMenu(): Promise<void> {
-  try {
-    await service.call("gui.registerMenuItem", {
-      id: "online-time.stats",
-      title: "🕒 在线统计",
-      order: 40,
-      category: "general",
-      permission: "onlinetime.see",
-      handler: (player: Player) => showStats(player),
-    } as unknown as Record<string, unknown>);
-    debug.i("ONLINE", "gui menu registered");
-  } catch (err) {
-    debug.w("ONLINE", `gui.registerMenuItem 不可用，已降级: ${err instanceof Error ? err.message : String(err)}`);
-  }
+async function registerUiFeature(): Promise<void> {
+  const result = await service.call<{ ok?: boolean; error?: string }>("gui.registerFeature", {
+    feature: featureUi,
+    screens: {
+      "screens/stats.ui.json": statsUi,
+    },
+  });
+  if (!result?.ok) throw new Error(result?.error || "在线时长 UI 注册失败");
 }
 
 function registerCommands(): void {
@@ -285,7 +276,15 @@ function registerCommands(): void {
       debug.i("ONLINE", "该指令必须由玩家执行");
       return;
     }
-    showStats(player);
+    void service
+      .call("gui.openScreen", {
+        playerId: player.id,
+        moduleId: MODULE_ID,
+        screenId: "online-time.stats",
+      })
+      .catch((error) => {
+        debug.w("ONLINE", `打开 UI 失败: ${error instanceof Error ? error.message : String(error)}`);
+      });
   };
   Command.register("online", "onlinetime.see", handler, "查看在线时间统计", MODULE_ID);
 }
@@ -346,10 +345,11 @@ ModuleRegistry.register({
       unprovide.push(service.provide("onlinetime.byPlayer", (input) => handleByPlayer(input)));
       unprovide.push(service.provide("onlinetime.top", (input) => handleTop(input)));
 
-      void tryRegisterGuiMenu();
+      await registerUiFeature();
       debug.i("ONLINE", `init tz=${timezone} flush=${flushIntervalTicks}`);
     },
     cleanup() {
+      void service.call("gui.unregisterFeature", { moduleId: MODULE_ID }).catch(() => undefined);
       for (const off of unprovide.splice(0, unprovide.length)) {
         try {
           off();

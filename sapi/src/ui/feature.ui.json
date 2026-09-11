@@ -1,0 +1,24 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/gh/DogeLakeDev/ScriptsForMinecraftServer@latest/modules/sdk/%40sfmc-sdk/schemas/ui-feature.v1.schema.json",
+  "formatVersion": 1,
+  "moduleId": "online-time",
+  "name": "在线时长统计",
+  "entries": [
+    {
+      "id": "online-time.stats",
+      "surface": "player",
+      "group": "general",
+      "title": "在线统计",
+      "description": "查看本次、今日、本月和累计在线时间",
+      "order": 40,
+      "permission": "onlinetime.see",
+      "target": "online-time.stats"
+    }
+  ],
+  "screens": [
+    {
+      "id": "online-time.stats",
+      "file": "screens/stats.ui.json"
+    }
+  ]
+}
