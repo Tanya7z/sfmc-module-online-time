@@ -287,8 +287,7 @@ function registerCommands(): void {
     }
     showStats(player);
   };
-  Command.register("onlinetime", "onlinetime.see", handler, "查看在线时间统计", MODULE_ID);
-  Command.register("onlineTime", "onlinetime.see", handler, "查看在线时间统计", MODULE_ID);
+  Command.register("online", "onlinetime.see", handler, "查看在线时间统计", MODULE_ID);
 }
 
 registerCommands();
