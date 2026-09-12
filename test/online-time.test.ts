@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 import { dateKey, formatDuration, monthKey, startOfLocalDay } from "../sapi/src/timeutil.ts";
 
 describe("online-time timeutil", () => {
@@ -20,5 +22,23 @@ describe("online-time timeutil", () => {
   it("formatDuration", () => {
     assert.equal(formatDuration(65), "1分5秒");
     assert.equal(formatDuration(3600), "1时");
+  });
+});
+
+describe("online-time manifest", () => {
+  it("声明式 UI 直接使用 SDK，不再依赖 gui 模块", () => {
+    const manifest = JSON.parse(
+      readFileSync(
+        fileURLToPath(new URL("../sapi/manifest.json", import.meta.url)),
+        "utf8",
+      ),
+    ) as {
+      requires: string[];
+      permissions: string[];
+      services: { requires: Array<{ name: string }> };
+    };
+    assert.deepEqual(manifest.requires, []);
+    assert.deepEqual(manifest.services.requires, []);
+    assert.ok(!manifest.permissions.some((p) => p.startsWith("service:gui.")));
   });
 });

@@ -8,6 +8,7 @@ import { config } from "@sfmc-bds/sdk/sapi/config";
 import { db } from "@sfmc-bds/sdk/sapi/db";
 import { Command, debug, Permission } from "@sfmc-bds/sdk/sapi/runtime";
 import { service } from "@sfmc-bds/sdk/sapi/service";
+import { ui } from "@sfmc-bds/sdk/sapi/ui";
 import { dateKey, formatDuration, monthKey, startOfLocalDay } from "./timeutil.js";
 import featureUi from "./ui/feature.ui.json" with { type: "json" };
 import statsUi from "./ui/screens/stats.ui.json" with { type: "json" };
@@ -42,6 +43,7 @@ const sessions = new Map<string, SessionState>();
 const unprovide: Array<() => void> = [];
 const eventCleanups: Array<() => void> = [];
 let flushRunId: number | undefined;
+let unregisterUi: (() => void) | undefined;
 let timezone = "Asia/Shanghai";
 let flushIntervalTicks = 3600;
 
@@ -260,14 +262,14 @@ async function handleTop(input: Record<string, unknown>) {
   });
 }
 
-async function registerUiFeature(): Promise<void> {
-  const result = await service.call<{ ok?: boolean; error?: string }>("gui.registerFeature", {
+function registerUiFeature(): void {
+  unregisterUi?.();
+  unregisterUi = ui.registerFeature({
     feature: featureUi,
     screens: {
       "screens/stats.ui.json": statsUi,
     },
   });
-  if (!result?.ok) throw new Error(result?.error || "在线时长 UI 注册失败");
 }
 
 function registerCommands(): void {
@@ -276,9 +278,8 @@ function registerCommands(): void {
       debug.i("ONLINE", "该指令必须由玩家执行");
       return;
     }
-    void service
-      .call("gui.openScreen", {
-        playerId: player.id,
+    void ui
+      .openScreen(player, {
         moduleId: MODULE_ID,
         screenId: "online-time.stats",
       })
@@ -345,11 +346,12 @@ ModuleRegistry.register({
       unprovide.push(service.provide("onlinetime.byPlayer", (input) => handleByPlayer(input)));
       unprovide.push(service.provide("onlinetime.top", (input) => handleTop(input)));
 
-      await registerUiFeature();
+      registerUiFeature();
       debug.i("ONLINE", `init tz=${timezone} flush=${flushIntervalTicks}`);
     },
     cleanup() {
-      void service.call("gui.unregisterFeature", { moduleId: MODULE_ID }).catch(() => undefined);
+      unregisterUi?.();
+      unregisterUi = undefined;
       for (const off of unprovide.splice(0, unprovide.length)) {
         try {
           off();
