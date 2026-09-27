@@ -5,9 +5,9 @@ Wave A official SFMC module: **online-time** (在线时长统计).
 ## Develop
 
 ```bash
-npm install
-npm run typecheck
-npm test
+pnpm install
+pnpm run typecheck
+pnpm run test
 ```
 
 Install into platform:
